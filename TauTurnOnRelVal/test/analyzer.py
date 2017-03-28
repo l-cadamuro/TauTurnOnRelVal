@@ -4,7 +4,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process("RelValTauL1")
 
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag.globaltag = '80X_mcRun2_asymptotic_2016_miniAODv2' #MC 25 ns miniAODv2
+process.GlobalTag.globaltag = '90X_mcRun2_asymptotic_v5'
 # process.GlobalTag.globaltag = '76X_dataRun2_16Dec2015_v0'
 
 #### plugin 
