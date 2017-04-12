@@ -14,14 +14,25 @@ import FWCore.ParameterSet.Config as cms
 #         filter = cms.bool(True)
 # )
 
+useGenTauHad = True
+
 goodTaus = cms.EDFilter("genMatcher",
         taus = cms.InputTag("hpsPFTauProducer", "", "RECO"),
-        genp = cms.InputTag("genParticles")
+        genp = cms.InputTag("genParticles"),
+        useGenTauHad = cms.bool(useGenTauHad),
+
 )
 
 Ntuplizer = cms.EDAnalyzer("Ntuplizer",
         taus  = cms.InputTag("goodTaus"),
         L1Tau = cms.InputTag("caloStage2Digis", "Tau", "RECO"),
+        L1TT  = cms.InputTag("caloStage2Digis", "CaloTower", "RECO"),
+        saveGenTauHad  = cms.bool(useGenTauHad),
+        genTauHad      = cms.InputTag("goodTaus"),
+        genTauMatchIdx = cms.InputTag("goodTaus"),
+        saveTT = cms.bool(True),
+        etaMax = cms.int32(10),
+        phiMax = cms.int32(15)
 )
 
 TauSeq = cms.Sequence(

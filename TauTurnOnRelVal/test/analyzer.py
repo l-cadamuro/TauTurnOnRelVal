@@ -69,4 +69,4 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
 # Adding ntuplizer
-process.TFileService=cms.Service('TFileService',fileName=cms.string('TauL1RelVal.root'))
+process.TFileService=cms.Service('TFileService',fileName=cms.string('TauL1RelVal_hadtaus.root'))
