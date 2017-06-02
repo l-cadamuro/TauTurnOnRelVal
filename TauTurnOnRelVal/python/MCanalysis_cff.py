@@ -24,9 +24,10 @@ goodTaus = cms.EDFilter("genMatcher",
 )
 
 Ntuplizer = cms.EDAnalyzer("Ntuplizer",
+        vtx   = cms.InputTag("offlinePrimaryVertices", "", "RECO"),
         taus  = cms.InputTag("goodTaus"),
         L1Tau = cms.InputTag("caloStage2Digis", "Tau", "RECO"),
-        L1TT  = cms.InputTag("caloStage2Digis", "CaloTower", "RECO"),
+        L1TT  = cms.InputTag("simCaloStage2Digis", "MP", "HLT"),
         saveGenTauHad  = cms.bool(useGenTauHad),
         genTauHad      = cms.InputTag("goodTaus"),
         genTauMatchIdx = cms.InputTag("goodTaus"),

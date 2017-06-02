@@ -88,6 +88,18 @@ class Ntuplizer : public edm::EDAnalyzer {
         float _l1tPhi;
         int _l1tIso;
 
+        short int _l1tnTT;
+        short int _l1trawEt;
+        short int _l1tisoEt;
+        bool _l1tisMerged;
+        bool _l1thasEM;
+        int _l1HwPt;
+        int _l1HwEta;
+        int _l1HwPhi;
+
+        // nvtx
+        int _nvtx;
+
         // TT
         std::vector<float> _TTHwEt;
         int _ieta;
@@ -107,6 +119,9 @@ class Ntuplizer : public edm::EDAnalyzer {
         edm::EDGetTokenT<std::vector<int>> _genTauMatchIdxTag;
 
         edm::EDGetTokenT<BXVector<l1t::CaloTower>> _L1TTTag;
+
+        edm::EDGetTokenT<std::vector<reco::Vertex>> _vtxTag;
+
 
         // -------------------------------------
         // controls wheter to read and save gen tau H and their products
@@ -131,6 +146,7 @@ _L1TauTag          (consumes<l1t::TauBxCollection>  (iConfig.getParameter<edm::I
 _genTauHadTag      (consumes<reco::CompositeCandidateCollection>  (iConfig.getParameter<edm::InputTag>("genTauHad"))),
 _genTauMatchIdxTag (consumes<std::vector<int>>                    (iConfig.getParameter<edm::InputTag>("genTauMatchIdx"))),
 _L1TTTag           (consumes<BXVector<l1t::CaloTower>>            (iConfig.getParameter<edm::InputTag>("L1TT"))),
+_vtxTag            (consumes<std::vector<reco::Vertex>>           (iConfig.getParameter<edm::InputTag>("vtx"))),
 _saveGenTauHad     (iConfig.getParameter<bool>("saveGenTauHad")),
 _saveTT            (iConfig.getParameter<bool>("saveTT")),
 _etaMax            (iConfig.getParameter<int>("etaMax")),
@@ -144,6 +160,8 @@ _phiMax            (iConfig.getParameter<int>("phiMax"))
     // _tree -> Branch("RunNumber",&_runNumber,"RunNumber/I");
     // _tree -> Branch("lumi",&_lumi,"lumi/I");
     // _tree -> Branch("tauTriggerBits", &_tauTriggerBits, "tauTriggerBits/l");
+    _tree -> Branch("nvtx",  &_nvtx,  "nvtx/I");
+
     _tree -> Branch("tauPt",  &_tauPt,  "tauPt/F");
     _tree -> Branch("tauEta", &_tauEta, "tauEta/F");
     _tree -> Branch("tauPhi", &_tauPhi, "tauPhi/F");
@@ -158,6 +176,15 @@ _phiMax            (iConfig.getParameter<int>("phiMax"))
     _tree -> Branch("l1tPhi", &_l1tPhi, "l1tPhi/F");
     // _tree -> Branch("l1tQual", &_l1tQual, "l1tQual/I");
     _tree -> Branch("l1tIso", &_l1tIso, "l1tIso/I");
+    _tree -> Branch("l1HwPt", &_l1HwPt, "_l1HwPt/I");
+    _tree -> Branch("l1HwEta", &_l1HwEta, "_l1HwEta/I");
+    _tree -> Branch("l1HwPhi", &_l1HwPhi, "_l1HwPhi/I");
+    _tree -> Branch("l1tnTT", &_l1tnTT, "l1tnTT/S");
+    _tree -> Branch("l1trawEt", &_l1trawEt, "l1trawEt/S");
+    _tree -> Branch("l1tisoEt", &_l1tisoEt, "l1tisoEt/S");
+    _tree -> Branch("l1tisMerged", &_l1tisMerged, "l1tisMerged/O");
+    _tree -> Branch("l1thasEM", &_l1thasEM, "l1thasEM/O");
+
     // _tree -> Branch("hasTriggerMuonType", &_hasTriggerMuonType, "hasTriggerMuonType/O");
     // _tree -> Branch("hasTriggerTauType", &_hasTriggerTauType, "hasTriggerTauType/O");
     // _tree -> Branch("isMatched", &_isMatched, "isMatched/O");
@@ -190,6 +217,8 @@ Ntuplizer::~Ntuplizer()
 
 void Ntuplizer::Initialize() {
 
+    _nvtx = -999;
+
     _tauPt = -999.;
     _tauEta = -999.;
     _tauPhi = -999.;
@@ -198,6 +227,15 @@ void Ntuplizer::Initialize() {
     _l1tEta = -999.;
     _l1tPhi = -999.;
     _l1tIso = -999;
+
+    _l1tnTT = -999;
+    _l1trawEt = -999;
+    _l1tisoEt = -999;
+    _l1tisMerged = false;
+    _l1thasEM = false;
+    _l1HwPt = -999;
+    _l1HwEta = -999;
+    _l1HwPhi = -999;
 
     _TTHwEt.clear();
     _ieta = -999;
@@ -236,9 +274,14 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
     edm::Handle<std::vector<int>>  genTauMatchIdxHandle;
     iEvent.getByToken(_genTauMatchIdxTag, genTauMatchIdxHandle);
 
+    edm::Handle<std::vector<reco::Vertex>>  vtxHandle;
+    iEvent.getByToken(_vtxTag,   vtxHandle);
+
+    _nvtx = vtxHandle->size();
+
     std::vector<l1t::CaloTower> towers (L1TTHandle->begin(0), L1TTHandle->end(0));
-    if (L1TTHandle->size() > 0) cout << "YEAHHH!!!! Size > 0: " << L1TTHandle->size() << endl;
     // // debug
+    // if (L1TTHandle->size() > 0) cout << "YEAHHH!!!! Size > 0: " << L1TTHandle->size() << endl;
     // cout << "INITIAL SIZE TT BX VECTOR  " << L1TTHandle->size() << endl;
     // cout << "INITIAL SIZE TAU BX VECTOR " << L1TauHandle->size() << endl;
     // cout << "COPIES VECTOR : " << towers.size() << endl;
@@ -267,6 +310,15 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
         _tauEta = tau.eta();
         _tauPhi = tau.phi();
 
+        // cout << tau.phiAtEcalEntrance() << " " << etaAtEcalEntrance() << endl;
+        const std::vector<reco::PFCandidatePtr>& signalPFCands = tau.signalPFCands();
+        cout << "TAU PT: " << tau.pt() << " -- Num of PF cands: " << signalPFCands.size() << endl;
+        for (uint i = 0; i < signalPFCands.size(); ++i)
+        {
+            reco::PFCandidatePtr pfc = signalPFCands.at(i);
+            cout << pfc->px() << " " << pfc->pdgId() << " " << pfc->phi() << " " << pfc->positionAtECALEntrance().phi() << endl;
+        }
+
         // match to L1
         if (vMatched.size() > 0)
         {
@@ -277,6 +329,14 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
             _l1tEta = l1tauMatched.eta();
             _l1tPhi = l1tauMatched.phi();
             _l1tIso = l1tauMatched.hwIso();
+            _l1HwPt  = l1tauMatched.hwPt();
+            _l1HwEta = l1tauMatched.hwEta();
+            _l1HwPhi = l1tauMatched.hwPhi();
+            _l1tnTT = l1tauMatched.nTT();
+            _l1trawEt = l1tauMatched.rawEt();
+            _l1tisoEt = l1tauMatched.isoEt();
+            _l1tisMerged = l1tauMatched.isMerged();
+            _l1thasEM = l1tauMatched.hasEM();
         }
 
         // save matched gen
