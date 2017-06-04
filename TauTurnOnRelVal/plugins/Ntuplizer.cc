@@ -23,6 +23,7 @@
 #include <FWCore/Utilities/interface/InputTag.h>
 #include <DataFormats/PatCandidates/interface/Muon.h>
 #include <DataFormats/PatCandidates/interface/Tau.h>
+#include "DataFormats/TauReco/interface/PFTauDiscriminator.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Common/interface/TriggerNames.h"
 // #include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
@@ -81,6 +82,12 @@ class Ntuplizer : public edm::EDAnalyzer {
         float _tauPt;
         float _tauEta;
         float _tauPhi;
+        int   _tauDecayMode;
+        int   _tauIDDiscrDecayMode;
+        int   _tauLooseMVAIso;
+        int   _tauMediumMVAIso;
+        int   _tauTightMVAIso;
+
 
         // L1 Tau
         float _l1tPt;
@@ -102,6 +109,10 @@ class Ntuplizer : public edm::EDAnalyzer {
 
         // TT
         std::vector<float> _TTHwEt;
+        std::vector<float> _TTEta;
+        std::vector<float> _TTPhi;
+        std::vector<float> _TTEtaSize;
+        std::vector<float> _TTPhiSize;
         int _ieta;
         int _iphi;
 
@@ -114,6 +125,15 @@ class Ntuplizer : public edm::EDAnalyzer {
 
         edm::EDGetTokenT<reco::PFTauRefVector>  _tauTag;
         edm::EDGetTokenT<l1t::TauBxCollection> _L1TauTag;
+
+        edm::EDGetTokenT<std::vector<reco::PFTau>> _allTauTag;
+
+        // discriminants
+        edm::EDGetTokenT<reco::PFTauDiscriminator> _tauIDDiscrDecayModeTag;
+        edm::EDGetTokenT<reco::PFTauDiscriminator> _tauLooseMVAIsoTag;
+        edm::EDGetTokenT<reco::PFTauDiscriminator> _tauMediumMVAIsoTag;
+        edm::EDGetTokenT<reco::PFTauDiscriminator> _tauTightMVAIsoTag;
+
 
         edm::EDGetTokenT<reco::CompositeCandidateCollection>  _genTauHadTag;
         edm::EDGetTokenT<std::vector<int>> _genTauMatchIdxTag;
@@ -143,6 +163,11 @@ class Ntuplizer : public edm::EDAnalyzer {
 Ntuplizer::Ntuplizer(const edm::ParameterSet& iConfig) :
 _tauTag            (consumes<reco::PFTauRefVector>  (iConfig.getParameter<edm::InputTag>("taus"))),
 _L1TauTag          (consumes<l1t::TauBxCollection>  (iConfig.getParameter<edm::InputTag>("L1Tau"))),
+_allTauTag         (consumes<std::vector<reco::PFTau>>      (iConfig.getParameter<edm::InputTag>("allTaus"))),
+_tauIDDiscrDecayModeTag (consumes<reco::PFTauDiscriminator> (iConfig.getParameter<edm::InputTag>("tauIDDiscrDecayMode")) ),
+_tauLooseMVAIsoTag      (consumes<reco::PFTauDiscriminator> (iConfig.getParameter<edm::InputTag>("tauLooseMVAIso")) ),
+_tauMediumMVAIsoTag     (consumes<reco::PFTauDiscriminator> (iConfig.getParameter<edm::InputTag>("tauMediumMVAIso")) ),
+_tauTightMVAIsoTag      (consumes<reco::PFTauDiscriminator> (iConfig.getParameter<edm::InputTag>("tauTightMVAIso")) ),
 _genTauHadTag      (consumes<reco::CompositeCandidateCollection>  (iConfig.getParameter<edm::InputTag>("genTauHad"))),
 _genTauMatchIdxTag (consumes<std::vector<int>>                    (iConfig.getParameter<edm::InputTag>("genTauMatchIdx"))),
 _L1TTTag           (consumes<BXVector<l1t::CaloTower>>            (iConfig.getParameter<edm::InputTag>("L1TT"))),
@@ -165,6 +190,12 @@ _phiMax            (iConfig.getParameter<int>("phiMax"))
     _tree -> Branch("tauPt",  &_tauPt,  "tauPt/F");
     _tree -> Branch("tauEta", &_tauEta, "tauEta/F");
     _tree -> Branch("tauPhi", &_tauPhi, "tauPhi/F");
+    _tree -> Branch ("tauDecayMode" ,        &_tauDecayMode,        "tauDecayMode/I");
+    _tree -> Branch ("tauIDDiscrDecayMode" , &_tauIDDiscrDecayMode, "tauIDDiscrDecayMode/I");
+    _tree -> Branch ("tauLooseMVAIso" ,      &_tauLooseMVAIso,      "tauLooseMVAIso/I");
+    _tree -> Branch ("tauMediumMVAIso" ,     &_tauMediumMVAIso,     "tauMediumMVAIso/I");
+    _tree -> Branch ("tauTightMVAIso" ,      &_tauTightMVAIso,      "tauTightMVAIso/I");
+
     // _tree -> Branch("muonPt",  &_muonPt,  "muonPt/F");
     // _tree -> Branch("muonEta", &_muonEta, "muonEta/F");
     // _tree -> Branch("muonPhi", &_muonPhi, "muonPhi/F");
@@ -197,6 +228,10 @@ _phiMax            (iConfig.getParameter<int>("phiMax"))
         _tree -> Branch("ieta", &_ieta, "ieta/I");   
         _tree -> Branch("iphi", &_iphi, "iphi/I");   
         _tree -> Branch("TTHwEt", &_TTHwEt);
+        _tree -> Branch("TTEta", &_TTEta);
+        _tree -> Branch("TTPhi", &_TTPhi);
+        _tree -> Branch("TTEtaSize", &_TTEtaSize);
+        _tree -> Branch("TTPhiSize", &_TTPhiSize);
     }
 
 
@@ -222,6 +257,11 @@ void Ntuplizer::Initialize() {
     _tauPt = -999.;
     _tauEta = -999.;
     _tauPhi = -999.;
+    _tauDecayMode = -999;
+    _tauIDDiscrDecayMode = -999;
+    _tauLooseMVAIso = -999;
+    _tauMediumMVAIso = -999;
+    _tauTightMVAIso = -999;
 
     _l1tPt = -999.;
     _l1tEta = -999.;
@@ -238,6 +278,10 @@ void Ntuplizer::Initialize() {
     _l1HwPhi = -999;
 
     _TTHwEt.clear();
+    _TTEta.clear();
+    _TTPhi.clear();
+    _TTEtaSize.clear();
+    _TTPhiSize.clear();
     _ieta = -999;
     _iphi = -999;
 
@@ -261,6 +305,18 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
     // search for the tag in the event
     edm::Handle<reco::PFTauRefVector>  tauHandle;
     iEvent.getByToken(_tauTag,   tauHandle);
+
+    edm::Handle<std::vector<reco::PFTau>> allTauHandle;
+    iEvent.getByToken (_allTauTag, allTauHandle);
+
+    edm::Handle<reco::PFTauDiscriminator> tauIDDiscrDecayModeHandle;
+    edm::Handle<reco::PFTauDiscriminator> tauLooseMVAIsoHandle;
+    edm::Handle<reco::PFTauDiscriminator> tauMediumMVAIsoHandle;
+    edm::Handle<reco::PFTauDiscriminator> tauTightMVAIsoHandle;
+    iEvent.getByToken(_tauIDDiscrDecayModeTag, tauIDDiscrDecayModeHandle);
+    iEvent.getByToken(_tauLooseMVAIsoTag, tauLooseMVAIsoHandle);
+    iEvent.getByToken(_tauMediumMVAIsoTag, tauMediumMVAIsoHandle);
+    iEvent.getByToken(_tauTightMVAIsoTag, tauTightMVAIsoHandle);
 
     edm::Handle< BXVector<l1t::Tau> >  L1TauHandle;
     iEvent.getByToken(_L1TauTag, L1TauHandle);
@@ -291,6 +347,9 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
     for (uint itau = 0; itau < tauHandle->size(); ++itau)
     {
         const reco::PFTau& tau = *((*tauHandle)[itau]);
+        // const reco::PFTauRef& tauref = ((*tauHandle)[itau]);
+
+        edm::Ref<reco::PFTauCollection> tauref(allTauHandle,itau);
 
         // look for a L1 candidate
         std::vector<pair<float, int>> vMatched;
@@ -309,6 +368,12 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
         _tauPt = tau.pt();
         _tauEta = tau.eta();
         _tauPhi = tau.phi();
+        _tauDecayMode = tau.decayMode();
+        _tauIDDiscrDecayMode = ( (*tauIDDiscrDecayModeHandle)[tauref] > 0.5 ? 1 : 0);
+        _tauLooseMVAIso      = ( (*tauLooseMVAIsoHandle)[tauref]      > 0.5 ? 1 : 0);
+        _tauMediumMVAIso     = ( (*tauMediumMVAIsoHandle)[tauref]     > 0.5 ? 1 : 0);
+        _tauTightMVAIso      = ( (*tauTightMVAIsoHandle)[tauref]      > 0.5 ? 1 : 0);
+
 
         // cout << tau.phiAtEcalEntrance() << " " << etaAtEcalEntrance() << endl;
         const std::vector<reco::PFCandidatePtr>& signalPFCands = tau.signalPFCands();
@@ -374,6 +439,10 @@ void Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& eSetup)
                     const l1t::CaloTower& TT = CaloTools::getTower(towers, jeta, jphi);
                     // cout << "~~~~~ " << TT.hwEta() << " " << TT.hwPt() << endl;
                     _TTHwEt.push_back(TT.hwPt());
+                    _TTEta.push_back(CaloTools::towerEta(jeta));
+                    _TTPhi.push_back(CaloTools::towerPhi(jeta, jphi));
+                    _TTEtaSize.push_back(CaloTools::towerEtaSize(jeta));
+                    _TTPhiSize.push_back(CaloTools::towerPhiSize(jeta));
                 }
             }
 
